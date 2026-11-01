@@ -1,0 +1,35 @@
+name: PR Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  intake:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.body == '/lab-request-review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create immutable command request
+        env:
+          COMMENT_ID: ${{ github.event.comment.id }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --argjson comment_id "$COMMENT_ID" \
+            --argjson pr_number "$PR_NUMBER" \
+            '{comment_id:$comment_id,pr_number:$pr_number,command:"lab-request-review"}' \
+            > "$RUNNER_TEMP/request.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pr-command-request
+          path: ${{ runner.temp }}/request.json
+          if-no-files-found: error
+          retention-days: 2
